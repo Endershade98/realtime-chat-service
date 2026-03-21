@@ -1,18 +1,24 @@
 // src/application/services/sendMessageService.js
+const MessageSent = require('../../domain/events/MessageSent');
+
 class SendMessageService {
-  constructor(messageRepo, conversationRepo) {
-    this.messageRepo = messageRepo;
-    this.conversationRepo = conversationRepo;
+  constructor(messageRepository, eventDispatcher) {
+    this.messageRepository = messageRepository;
+    this.eventDispatcher = eventDispatcher; // in-memory, Redis, o WebSocket
   }
 
-  execute({ conversationId, senderId, content }) {
-    const conversation = this.conversationRepo.findById(conversationId);
-    if (!conversation) throw new Error('Conversation not found');
+  async execute({ conversationId, senderId, content }) {
+    const message = await this.messageRepository.create({ conversationId, senderId, content });
 
-    const Message = require('../../domain/entities/Message');
-    const message = new Message({ conversationId, senderId, content });
+    // emetti evento
+    const event = new MessageSent({
+      messageId: message.id,
+      conversationId,
+      senderId,
+      content,
+    });
 
-    this.messageRepo.save(message);
+    this.eventDispatcher.dispatch(event); // astratto, può essere EventEmitter, Redis, ecc.
 
     return message;
   }
