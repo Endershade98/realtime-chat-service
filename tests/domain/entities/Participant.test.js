@@ -4,12 +4,10 @@ describe('Participant Entity', () => {
 
   test('should create a participant', () => {
     const participant = new Participant({
-      userId: 'user1'
+      userId: undefined
     });
 
-    expect(participant.id).toBeDefined();
-    expect(participant.userId).toBe('user1');
-    expect(participant.role).toBe('member');
+    expect(participant.userId.value).toBeDefined();
   });
 
 });

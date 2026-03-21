@@ -1,11 +1,18 @@
-const { v4: uuidv4 } = require('uuid');
+const ConversationId = require('../value-objects/ConversationId');
+const Timestamp = require('../value-objects/Timestamp');
 
 class Conversation {
-  constructor({ id, title, participants }) {
-    this.id = id || uuidv4();
+  constructor({ id, title, participants = [], createdAt } = {}) {
+    this.id = id instanceof ConversationId
+      ? id
+      : new ConversationId(id);
+
     this.title = title || null;
-    this.participants = participants || []; // array di Participant
-    this.createdAt = new Date();
+    this.participants = participants;
+
+    this.createdAt = createdAt instanceof Timestamp
+      ? createdAt
+      : new Timestamp(createdAt);
   }
 
   addParticipant(participant) {
@@ -13,7 +20,9 @@ class Conversation {
   }
 
   removeParticipant(userId) {
-    this.participants = this.participants.filter(p => p.userId !== userId);
+    this.participants = this.participants.filter(
+      p => p.userId.toString() !== userId.toString()
+    );
   }
 }
 

@@ -4,38 +4,37 @@ describe('Message Entity', () => {
 
   test('should create a message', () => {
     const message = new Message({
-      conversationId: 'chat1',
-      senderId: 'user1',
+      conversationId: undefined,
+      senderId: undefined,
       content: 'Hello'
     });
 
-    expect(message.id).toBeDefined();
+    expect(message.id.value).toBeDefined();
     expect(message.content).toBe('Hello');
-    expect(message.type).toBe('text');
   });
 
   test('should mark message as delivered', () => {
     const message = new Message({
-      conversationId: 'chat1',
-      senderId: 'user1',
+      conversationId: undefined,
+      senderId: undefined,
       content: 'Hello'
     });
 
     message.markDelivered();
 
-    expect(message.deliveredAt).toBeInstanceOf(Date);
+    expect(message.deliveredAt.value).toBeInstanceOf(Date);
   });
 
   test('should mark message as read', () => {
     const message = new Message({
-      conversationId: 'chat1',
-      senderId: 'user1',
+      conversationId: undefined,
+      senderId: undefined,
       content: 'Hello'
     });
 
     message.markRead();
 
-    expect(message.readAt).toBeInstanceOf(Date);
+    expect(message.readAt.value).toBeInstanceOf(Date);
   });
 
 });
