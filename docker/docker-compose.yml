@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16
+    container_name: realtime_chat_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: realtime_chat_db
+    ports:
+      - "55432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  db_test:
+    image: postgres:16
+    container_name: realtime_chat_db_test
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: realtime_chat_db_test
+    ports:
+      - "55433:5432" 
+    volumes:
+      - db-test-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:
+  db-test-data:
