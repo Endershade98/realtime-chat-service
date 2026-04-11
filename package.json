@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node src/presentation/websocket/websocket.gateway.js",
     "dev": "nodemon src/presentation/websocket/websocket.gateway.js",
+    "start:rest": "node src/presentation/rest/server.js",
     "test": "NODE_ENV=test dotenv_config_path=.env.test jest"
   },
   "repository": {

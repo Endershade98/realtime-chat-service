@@ -1,13 +1,13 @@
 // src/infrastructure/repositories/PostgresConversationRepository.js
-const prisma = require('../database/prismaClient');
+const { getPrismaClient } = require('../database/prismaClient');
 const Conversation = require('../../domain/entities/Conversation');
 const ConversationId = require('../../domain/value-objects/ConversationId');
 
-// src/infrastructure/repositories/PostgresConversationRepository.js
+const prisma = getPrismaClient();
+
 class PostgresConversationRepository {
-  constructor(prisma) {
-    if (!prisma) throw new Error('PostgresConversationRepository requires a PrismaClient instance');
-    this.prisma = prisma;
+  constructor(prismaClient = prisma) {
+    this.prisma = prismaClient;
   }
 
   async create(conversation) {
@@ -18,9 +18,10 @@ class PostgresConversationRepository {
         createdAt: conversation.createdAt,
       },
     });
-    return new (require('../../domain/entities/Conversation'))({ 
-      id: new (require('../../domain/value-objects/ConversationId'))(created.id), 
-      title: created.title 
+
+    return new Conversation({
+      id: new ConversationId(created.id),
+      title: created.title,
     });
   }
 
@@ -29,19 +30,25 @@ class PostgresConversationRepository {
       where: { id: conversationId.value },
       include: { participants: true, messages: true },
     });
+
     if (!found) return null;
-    return new (require('../../domain/entities/Conversation'))({
-      id: new (require('../../domain/value-objects/ConversationId'))(found.id),
-      title: found.title
+
+    return new Conversation({
+      id: new ConversationId(found.id),
+      title: found.title,
     });
   }
 
   async findAll() {
     const conversations = await this.prisma.conversation.findMany();
-    return conversations.map(c => new (require('../../domain/entities/Conversation'))({
-      id: new (require('../../domain/value-objects/ConversationId'))(c.id),
-      title: c.title
-    }));
+
+    return conversations.map(
+      (c) =>
+        new Conversation({
+          id: new ConversationId(c.id),
+          title: c.title,
+        })
+    );
   }
 
   async update(conversation) {
@@ -49,9 +56,10 @@ class PostgresConversationRepository {
       where: { id: conversation.id.value },
       data: { title: conversation.title },
     });
-    return new (require('../../domain/entities/Conversation'))({
-      id: new (require('../../domain/value-objects/ConversationId'))(updated.id),
-      title: updated.title
+
+    return new Conversation({
+      id: new ConversationId(updated.id),
+      title: updated.title,
     });
   }
 
