@@ -1,10 +1,10 @@
-// jest.config.js
 module.exports = {
   testEnvironment: 'node',
+  roots: ['<rootDir>/tests'],
 
-  // QUESTO è fondamentale
-  setupFiles: ['dotenv/config'],
-
-  globalSetup: './tests/setupTestDB.js',
-  globalTeardown: './tests/teardownTestDB.js',
+  moduleNameMapper: {
+    '^@domain/(.*)$': '<rootDir>/src/domain/$1',
+    '^@application/(.*)$': '<rootDir>/src/application/$1',
+    '^@infrastructure/(.*)$': '<rootDir>/src/infrastructure/$1',
+  }
 };

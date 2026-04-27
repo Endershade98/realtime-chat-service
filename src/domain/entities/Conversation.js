@@ -1,27 +1,53 @@
+// src/domain/entities/Conversation.js
+
 const ConversationId = require('../value-objects/ConversationId');
-const Timestamp = require('../value-objects/Timestamp');
+const Participant = require('./Participant');
+const UserId = require('../value-objects/UserId'); // 👈 QUESTO MANCAVA
 
 class Conversation {
-  constructor({ id, title, participants = [], createdAt } = {}) {
-    this.id = id instanceof ConversationId
-      ? id
-      : new ConversationId(id);
+  constructor({ id, participants = [] } = {}) {
+    this._id = id instanceof ConversationId ? id : new ConversationId();
 
-    this.title = title || null;
-    this.participants = participants;
-
-    this.createdAt = createdAt instanceof Timestamp
-      ? createdAt
-      : new Timestamp(createdAt);
+    this._participants = participants.map(p =>
+      p instanceof Participant ? p : new Participant(p)
+    );
   }
 
-  addParticipant(participant) {
-    this.participants.push(participant);
+  get id() {
+    return this._id;
+  }
+
+  get participants() {
+    return this._participants;
+  }
+
+  addParticipant(userId) {
+    const uid = userId instanceof UserId ? userId : new UserId(userId);
+
+    const exists = this._participants.some(p =>
+      p.userId.equals(uid)
+    );
+
+    if (!exists) {
+      this._participants.push(
+        new Participant({ userId: uid })
+      );
+    }
   }
 
   removeParticipant(userId) {
-    this.participants = this.participants.filter(
-      p => p.userId.toString() !== userId.toString()
+    const uid = userId instanceof UserId ? userId : new UserId(userId);
+
+    this._participants = this._participants.filter(p =>
+      !p.userId.equals(uid)
+    );
+  }
+
+  hasParticipant(userId) {
+    const uid = userId instanceof UserId ? userId : new UserId(userId);
+
+    return this._participants.some(p =>
+      p.userId.equals(uid)
     );
   }
 }

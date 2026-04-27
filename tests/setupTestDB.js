@@ -1,15 +1,21 @@
-const { execSync } = require('child_process');
+// tests/setupTestDB.js
+const { PrismaClient } = require("@prisma/client");
 
-module.exports = async () => {
-  console.log('Setup test DB (Docker)...');
+const prisma = new PrismaClient();
 
-  execSync('npx prisma migrate deploy', {
-    env: {
-      ...process.env,
-      DATABASE_URL: process.env.DATABASE_URL,
-    },
-    stdio: 'inherit',
-  });
+beforeAll(async () => {
+  await prisma.$connect();
+});
 
-  console.log('Test DB pronto');
-};
+afterEach(async () => {
+  // pulizia DB tra test
+  await prisma.message.deleteMany();
+  await prisma.conversation.deleteMany();
+  await prisma.user.deleteMany();
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
+});
+
+module.exports = prisma;

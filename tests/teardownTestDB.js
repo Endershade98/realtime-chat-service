@@ -1,3 +1,7 @@
+// tests/teardownTestDB.js
+const { getTestPrisma } = require('./helpers/prismaTestClient');
+
 module.exports = async () => {
-  console.log('Teardown test DB (noop - Docker isolation)');
+  const prisma = getTestPrisma();
+  await prisma.$disconnect();
 };

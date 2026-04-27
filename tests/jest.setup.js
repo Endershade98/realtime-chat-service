@@ -1,13 +1,5 @@
-const prisma = require('../src/infrastructure/database/prismaClient');
+// tests/jest.setup.js
+jest.setTimeout(10000);
 
-beforeEach(async () => {
-  // Pulisce tutte le tabelle
-  await prisma.message.deleteMany();
-  await prisma.participant.deleteMany();
-  await prisma.conversation.deleteMany();
-  await prisma.user.deleteMany();
-});
-
-afterAll(async () => {
-  await prisma.$disconnect();
-});
+// log puliti nei test
+console.log = jest.fn();

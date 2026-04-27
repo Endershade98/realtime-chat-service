@@ -1,20 +1,29 @@
+// src/domain/entities/Participant.js
+
 const UserId = require('../value-objects/UserId');
-const Timestamp = require('../value-objects/Timestamp');
-const { v4: uuidv4 } = require('uuid');
 
 class Participant {
-  constructor({ id, userId, role, joinedAt }) {
-    this.id = id || uuidv4();
+  constructor({ id, userId, role = 'member' }) {
+    this._id = id ?? null;
 
-    this.userId = userId instanceof UserId
-      ? userId
-      : new UserId(userId);
+    this._userId =
+      userId instanceof UserId ? userId : new UserId(userId);
 
-    this.role = role || 'member';
+    this._role = role;
 
-    this.joinedAt = joinedAt instanceof Timestamp
-      ? joinedAt
-      : new Timestamp(joinedAt);
+    Object.freeze(this);
+  }
+
+  get id() {
+    return this._id;
+  }
+
+  get userId() {
+    return this._userId;
+  }
+
+  get role() {
+    return this._role;
   }
 }
 

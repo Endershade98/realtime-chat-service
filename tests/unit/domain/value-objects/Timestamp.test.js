@@ -1,4 +1,6 @@
-const Timestamp = require('../../../src/domain/value-objects/Timestamp');
+// tests/unit/domain/value-objects/Timestamp.test.js
+const Timestamp = require('@domain/value-objects/Timestamp');
+
 
 describe('Timestamp Value Object', () => {
 

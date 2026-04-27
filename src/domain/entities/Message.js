@@ -1,3 +1,5 @@
+// src/domain/entities/Message.js
+
 const MessageId = require('../value-objects/MessageId');
 const ConversationId = require('../value-objects/ConversationId');
 const UserId = require('../value-objects/UserId');
@@ -9,11 +11,16 @@ class Message {
     conversationId,
     senderId,
     content,
-    type,
+    type = 'text',
     createdAt,
-    deliveredAt,
-    readAt
+    deliveredAt = null,
+    readAt = null
   }) {
+
+    if (!content || content.trim() === "") {
+      throw new Error("Message content cannot be empty");
+    }
+
     this.id = id instanceof MessageId ? id : new MessageId(id);
     this.conversationId = conversationId instanceof ConversationId
       ? conversationId
@@ -24,19 +31,14 @@ class Message {
       : new UserId(senderId);
 
     this.content = content;
-    this.type = type || 'text';
+    this.type = type;
 
     this.createdAt = createdAt instanceof Timestamp
       ? createdAt
       : new Timestamp(createdAt);
 
-    this.deliveredAt = deliveredAt
-      ? new Timestamp(deliveredAt)
-      : null;
-
-    this.readAt = readAt
-      ? new Timestamp(readAt)
-      : null;
+    this.deliveredAt = deliveredAt ? new Timestamp(deliveredAt) : null;
+    this.readAt = readAt ? new Timestamp(readAt) : null;
   }
 
   markDelivered() {
@@ -45,6 +47,14 @@ class Message {
 
   markRead() {
     this.readAt = new Timestamp();
+  }
+
+  isRead() {
+    return this.readAt !== null;
+  }
+
+  equals(other) {
+    return other instanceof Message && this.id.equals(other.id);
   }
 }
 
