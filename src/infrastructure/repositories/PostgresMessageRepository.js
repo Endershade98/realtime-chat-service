@@ -1,68 +1,78 @@
-// src/infrastructure/repositories/PostgresUserRepository.js
-const User = require('../../domain/entities/User');
-const UserId = require('../../domain/value-objects/UserId');
+// src/infrastructure/repositories/PostgresMessageRepository.js
 
-class PostgresUserRepository {
-  constructor(prismaClient) {
-    if (!prismaClient) throw new Error('PrismaClient è richiesto');
-    this.prisma = prismaClient;
+const Message = require('../../domain/entities/Message');
+const MessageId = require('../../domain/value-objects/MessageId');
+const ConversationId = require('../../domain/value-objects/ConversationId');
+const UserId = require('../../domain/value-objects/UserId');
+const Timestamp = require('../../domain/value-objects/Timestamp');
+
+class PostgresMessageRepository {
+  constructor(prisma) {
+    if (!prisma) {
+      throw new Error('Prisma client is required');
+    }
+    this.prisma = prisma;
   }
 
-  async create(user) {
-    const created = await this.prisma.user.create({
+  async create(message) {
+    const created = await this.prisma.message.create({
       data: {
-        id: user.id.value,
-        username: user.username,
-        email: user.email,
-        createdAt: user.createdAt || new Date(),
+        id: message.id.value,
+        conversationId: message.conversationId.value,
+        senderId: message.senderId.value,
+        content: message.content,
+        sentAt: message.sentAt.value,
       },
     });
-    return new User({
-      id: new UserId(created.id),
-      username: created.username,
-      email: created.email,
+
+    return new Message({
+      id: new MessageId(created.id),
+      conversationId: new ConversationId(created.conversationId),
+      senderId: new UserId(created.senderId),
+      content: created.content,
+      sentAt: new Timestamp(created.sentAt),
     });
   }
 
-  async findById(userId) {
-    const found = await this.prisma.user.findUnique({
-      where: { id: userId.value },
+  async findById(messageId) {
+    const found = await this.prisma.message.findUnique({
+      where: { id: messageId.value },
     });
+
     if (!found) return null;
-    return new User({
-      id: new UserId(found.id),
-      username: found.username,
-      email: found.email,
+
+    return new Message({
+      id: new MessageId(found.id),
+      conversationId: new ConversationId(found.conversationId),
+      senderId: new UserId(found.senderId),
+      content: found.content,
+      sentAt: new Timestamp(found.sentAt),
     });
   }
 
-  async findAll() {
-    const users = await this.prisma.user.findMany();
-    return users.map(
-      u =>
-        new User({
-          id: new UserId(u.id),
-          username: u.username,
-          email: u.email,
+  async findByConversationId(conversationId) {
+    const messages = await this.prisma.message.findMany({
+      where: { conversationId: conversationId.value },
+      orderBy: { sentAt: 'asc' },
+    });
+
+    return messages.map(
+      (m) =>
+        new Message({
+          id: new MessageId(m.id),
+          conversationId: new ConversationId(m.conversationId),
+          senderId: new UserId(m.senderId),
+          content: m.content,
+          sentAt: new Timestamp(m.sentAt),
         })
     );
   }
 
-  async update(user) {
-    const updated = await this.prisma.user.update({
-      where: { id: user.id.value },
-      data: { username: user.username, email: user.email },
+  async delete(messageId) {
+    await this.prisma.message.delete({
+      where: { id: messageId.value },
     });
-    return new User({
-      id: new UserId(updated.id),
-      username: updated.username,
-      email: updated.email,
-    });
-  }
-
-  async delete(userId) {
-    await this.prisma.user.delete({ where: { id: userId.value } });
   }
 }
 
-module.exports = PostgresUserRepository;
+module.exports = PostgresMessageRepository;

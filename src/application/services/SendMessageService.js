@@ -17,7 +17,7 @@ class SendMessageService {
       sentAt: new Timestamp()
     });
 
-    return this.messageRepository.create(message);
+    return this.messageRepository.save(message);
   }
 }
 

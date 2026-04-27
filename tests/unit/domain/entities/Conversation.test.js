@@ -55,4 +55,27 @@ describe('Conversation Entity', () => {
     expect(conversation.hasParticipant(uuid1)).toBe(true);
   });
 
+  test('should emit event when participant added', () => {
+    const conversation = new Conversation();
+
+    const userId = '550e8400-e29b-41d4-a716-446655440000';
+
+    conversation.addParticipant(userId);
+
+    const events = conversation.pullEvents();
+
+    expect(events.length).toBe(1);
+    expect(events[0].event).toBe('USER_CONNECTED');
+  });
+  
+  test('should clear events after pull', () => {
+    const conversation = new Conversation();
+
+    conversation.addParticipant('550e8400-e29b-41d4-a716-446655440000');
+
+    conversation.pullEvents();
+    const events = conversation.pullEvents();
+
+    expect(events.length).toBe(0);
+  });
 });

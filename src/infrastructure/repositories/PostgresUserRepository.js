@@ -1,5 +1,4 @@
 // src/infrastructure/repositories/PostgresUserRepository.js
-// src/infrastructure/repositories/PostgresUserRepository.js
 
 const User = require('../../domain/entities/User');
 const UserId = require('../../domain/value-objects/UserId');
@@ -12,7 +11,7 @@ class PostgresUserRepository {
     this.prisma = prisma;
   }
 
-  async create(user) {
+  async save(user) {
     const created = await this.prisma.user.create({
       data: {
         id: user.id.value,

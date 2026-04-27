@@ -9,7 +9,7 @@ class CreateUserService {
 
   async execute({ username, email }) {
     const user = new User({ id: new UserId(), username, email, createdAt: new Date() });
-    return this.userRepository.create(user);
+    return this.userRepository.save(user);
   }
 }
 

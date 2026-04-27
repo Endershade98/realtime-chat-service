@@ -3,8 +3,12 @@ const CreateConversationService = require('../../../application/services/CreateC
 const GetConversationMessagesService = require('../../../application/services/GetConversationMessagesService');
 
 class ConversationController {
-  constructor(conversationRepo, messageRepo) {
-    this.createConversationService = new CreateConversationService(conversationRepo);
+  constructor(conversationRepo, messageRepo, eventDispatcher) {
+    this.createConversationService = new CreateConversationService(
+      conversationRepo,
+      eventDispatcher
+    );
+
     this.getMessagesService = new GetConversationMessagesService(messageRepo);
   }
 

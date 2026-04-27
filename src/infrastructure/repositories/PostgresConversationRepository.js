@@ -10,7 +10,7 @@ class PostgresConversationRepository {
     this.prisma = prismaClient;
   }
 
-  async create(conversation) {
+  async save(conversation) {
     const created = await this.prisma.conversation.create({
       data: {
         id: conversation.id.value,
