@@ -1,18 +1,15 @@
 // src/domain/events/DomainEvent.js
 
 class DomainEvent {
-  constructor(data = {}) {
+  constructor(type, data = {}) {
+    this.type = type;
     this.data = data;
     this.timestamp = new Date().toISOString();
   }
 
-  getName() {
-    return this.constructor.name;
-  }
-
   toJSON() {
     return {
-      event: this.getName(),
+      type: this.type,
       data: this.data,
       timestamp: this.timestamp
     };

@@ -1,4 +1,4 @@
-// src/domain/aggregate/AggregateRoot.js
+// src/domain/aggregates/AggregateRoot.js
 
 class AggregateRoot {
   constructor() {

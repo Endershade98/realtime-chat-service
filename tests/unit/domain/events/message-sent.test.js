@@ -2,7 +2,7 @@
 
 const MessageSent = require('../../../../src/domain/events/MessageSent');
 
-describe('MessageSent', () => {
+describe('MESSAGE_SENT', () => {
 
   test('creates event correctly', () => {
     const event = new MessageSent({
@@ -12,7 +12,7 @@ describe('MessageSent', () => {
       content: 'hello'
     });
 
-    expect(event.getName()).toBe('MessageSent');
+    expect(event.type).toBe('MESSAGE_SENT');
     expect(event.data.content).toBe('hello');
   });
 

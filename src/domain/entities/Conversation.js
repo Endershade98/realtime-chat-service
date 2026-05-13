@@ -1,4 +1,5 @@
 // src/domain/entities/Conversation.js
+
 const ConversationId = require('../value-objects/ConversationId');
 const UserId = require('../value-objects/UserId');
 const Participant = require('./Participant');
@@ -22,7 +23,27 @@ class Conversation extends AggregateRoot {
   }
 
   // ------------------------
-  // BEHAVIORS
+  // FACTORY METHOD (DDD PURE)
+  // ------------------------
+  static create({ title, creatorUserId }) {
+    const conversation = new Conversation({ title });
+
+    if (creatorUserId) {
+      conversation.addParticipant(creatorUserId);
+    }
+
+    conversation.addEvent(
+      new ConversationCreated({
+        conversationId: conversation.id.toString(),
+        title
+      })
+    );
+
+    return conversation;
+  }
+
+  // ------------------------
+  // BEHAVIOR
   // ------------------------
   addParticipant(userId) {
     const uid = userId instanceof UserId ? userId : new UserId(userId);
@@ -62,9 +83,12 @@ class Conversation extends AggregateRoot {
   // ------------------------
   // GETTERS
   // ------------------------
-
   get id() {
     return this._id;
+  }
+
+  get title() {
+    return this._title;
   }
 
   get participants() {
@@ -72,9 +96,8 @@ class Conversation extends AggregateRoot {
   }
 
   // ------------------------
-  // DOMAIN RULES
+  // RULES
   // ------------------------
-
   hasParticipant(userId) {
     const uid = userId instanceof UserId ? userId : new UserId(userId);
 
