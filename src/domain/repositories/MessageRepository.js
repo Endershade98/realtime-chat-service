@@ -1,31 +1,15 @@
 // src/domain/repositories/MessageRepository.js
-class MessageRepository {
-  constructor() {
-    this.messages = new Map(); // key = messageId.value
-  }
 
+class MessageRepository {
   save(message) {
-    this.messages.set(message.id.toString(), message);
-    return message;
+    throw new Error("Not implemented");
   }
 
   findById(messageId) {
-    return this.messages.get(messageId.toString()) || null;
-  }
-
-  remove(messageId) {
-    return this.messages.delete(messageId.toString());
+    throw new Error("Not implemented");
   }
 
   findByConversation(conversationId) {
-    return Array.from(this.messages.values()).filter(
-      msg => msg.conversationId.toString() === conversationId.toString()
-    );
-  }
-
-  findAll() {
-    return Array.from(this.messages.values());
+    throw new Error("Not implemented");
   }
 }
-
-module.exports = MessageRepository;

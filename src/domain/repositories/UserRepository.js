@@ -1,24 +1,20 @@
 // src/domain/repositories/UserRepository.js
-class UserRepository {
-  constructor() {
-    this.users = new Map(); // key = userId.value
-  }
 
+class UserRepository {
   save(user) {
-    this.users.set(user.id.toString(), user);
-    return user;
+    throw new Error("Not implemented");
   }
 
   findById(userId) {
-    return this.users.get(userId.toString()) || null;
-  }
-
-  remove(userId) {
-    return this.users.delete(userId.toString());
+    throw new Error("Not implemented");
   }
 
   findAll() {
-    return Array.from(this.users.values());
+    throw new Error("Not implemented");
+  }
+
+  remove(userId) {
+    throw new Error("Not implemented");
   }
 }
 

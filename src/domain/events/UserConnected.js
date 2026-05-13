@@ -4,7 +4,7 @@ const DomainEvent = require('./DomainEvent');
 
 class UserConnected extends DomainEvent {
   constructor({ userId, socketId }) {
-    super('UserConnected', {
+    super('USER_CONNECTED', {
       userId,
       socketId
     });

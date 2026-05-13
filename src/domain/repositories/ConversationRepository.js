@@ -1,25 +1,19 @@
 // src/domain/repositories/ConversationRepository.js
-class ConversationRepository {
-  constructor() {
-    this.conversations = new Map(); // key = conversationId.value
-  }
 
+class ConversationRepository {
   save(conversation) {
-    this.conversations.set(conversation.id.toString(), conversation);
-    return conversation;
+    throw new Error("Not implemented");
   }
 
   findById(conversationId) {
-    return this.conversations.get(conversationId.toString()) || null;
-  }
-
-  remove(conversationId) {
-    return this.conversations.delete(conversationId.toString());
+    throw new Error("Not implemented");
   }
 
   findAll() {
-    return Array.from(this.conversations.values());
+    throw new Error("Not implemented");
+  }
+
+  remove(conversationId) {
+    throw new Error("Not implemented");
   }
 }
-
-module.exports = ConversationRepository;

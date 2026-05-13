@@ -1,10 +1,5 @@
 // src/domain/entities/Message.js
 
-const MessageId = require('../value-objects/MessageId');
-const ConversationId = require('../value-objects/ConversationId');
-const UserId = require('../value-objects/UserId');
-const Timestamp = require('../value-objects/Timestamp');
-
 class Message {
   constructor({
     id,
@@ -13,44 +8,32 @@ class Message {
     content,
     type = 'text',
     createdAt,
-    deliveredAt = null,
-    readAt = null
+    status = 'sent'
   }) {
 
     if (!content || content.trim() === "") {
       throw new Error("Message content cannot be empty");
     }
 
-    this.id = id instanceof MessageId ? id : new MessageId(id);
-    this.conversationId = conversationId instanceof ConversationId
-      ? conversationId
-      : new ConversationId(conversationId);
-
-    this.senderId = senderId instanceof UserId
-      ? senderId
-      : new UserId(senderId);
+    this.id = id;
+    this.conversationId = conversationId;
+    this.senderId = senderId;
 
     this.content = content;
     this.type = type;
 
-    this.createdAt = createdAt instanceof Timestamp
-      ? createdAt
-      : new Timestamp(createdAt);
-
-    this.deliveredAt = deliveredAt ? new Timestamp(deliveredAt) : null;
-    this.readAt = readAt ? new Timestamp(readAt) : null;
+    this.createdAt = createdAt;
+    this.status = status;
   }
 
   markDelivered() {
-    this.deliveredAt = new Timestamp();
+    if (this.status === 'read') return;
+
+    this.status = 'delivered';
   }
 
   markRead() {
-    this.readAt = new Timestamp();
-  }
-
-  isRead() {
-    return this.readAt !== null;
+    this.status = 'read';
   }
 
   equals(other) {

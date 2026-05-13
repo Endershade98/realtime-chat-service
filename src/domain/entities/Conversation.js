@@ -1,64 +1,44 @@
 // src/domain/entities/Conversation.js
-
 const ConversationId = require('../value-objects/ConversationId');
 const UserId = require('../value-objects/UserId');
 const Participant = require('./Participant');
-
-// eventi
+const AggregateRoot = require('../aggregates/AggregateRoot');
 const UserConnected = require('../events/UserConnected');
+const ConversationCreated = require('../events/ConversationCreated');
 
-class Conversation {
-  constructor({ id, participants = [] } = {}) {
+class Conversation extends AggregateRoot {
+  constructor({ id, participants = [], title, createdAt } = {}) {
+    super();
+
     this._id = id instanceof ConversationId ? id : new ConversationId();
+    this._title = title;
+    this._createdAt = createdAt ?? new Date();
 
     this._participants = participants.map(p =>
       p instanceof Participant ? p : new Participant(p)
     );
 
-    this._events = [];
-
     Object.freeze(this._id);
   }
 
   // ------------------------
-  // GETTERS
+  // BEHAVIORS
   // ------------------------
-  get id() {
-    return this._id;
-  }
-
-  get participants() {
-    return [...this._participants];
-  }
-
-  // ------------------------
-  // AGGREGATE BEHAVIOR
-  // ------------------------
-
   addParticipant(userId) {
     const uid = userId instanceof UserId ? userId : new UserId(userId);
 
-    const exists = this._participants.some(p =>
-      p.userId.equals(uid)
-    );
-
-    if (exists) {
+    if (this.hasParticipant(uid)) {
       throw new Error('Participant already exists');
     }
 
-    const participant = new Participant({ userId: uid });
+    this._participants.push(new Participant({ userId: uid }));
 
-    this._participants.push(participant);
-
-    // DOMAIN EVENT
-    this._events.push(
+    this.addEvent(
       new UserConnected({
         userId: uid.toString(),
         conversationId: this._id.toString()
       })
     );
-
-    return participant;
   }
 
   removeParticipant(userId) {
@@ -74,11 +54,26 @@ class Conversation {
 
     this._participants.splice(index, 1);
 
-    // Invariante opzionale:
     if (this._participants.length === 0) {
       throw new Error('Conversation cannot be empty');
     }
   }
+
+  // ------------------------
+  // GETTERS
+  // ------------------------
+
+  get id() {
+    return this._id;
+  }
+
+  get participants() {
+    return [...this._participants];
+  }
+
+  // ------------------------
+  // DOMAIN RULES
+  // ------------------------
 
   hasParticipant(userId) {
     const uid = userId instanceof UserId ? userId : new UserId(userId);
@@ -86,16 +81,6 @@ class Conversation {
     return this._participants.some(p =>
       p.userId.equals(uid)
     );
-  }
-
-  // ------------------------
-  // DOMAIN EVENTS
-  // ------------------------
-
-  pullEvents() {
-    const events = [...this._events];
-    this._events = [];
-    return events;
   }
 }
 

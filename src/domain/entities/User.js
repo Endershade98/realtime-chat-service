@@ -5,26 +5,24 @@ const Timestamp = require('../value-objects/Timestamp');
 
 class User {
   constructor({ id, username, email, createdAt }) {
-    
-    if (!username || username.trim() === "") {
-      throw new Error("Username cannot be empty");
-    }
+    if (!username?.trim()) throw new Error("Username required");
+    if (!email?.trim()) throw new Error("Email required");
 
-    if (!email || email.trim() === "") {
-      throw new Error("Email cannot be empty");
-    }
-
-    this.id = id instanceof UserId ? id : new UserId(id);
+    this.id = id;
     this.username = username;
     this.email = email;
+    this.createdAt = createdAt;
+  }
 
-    this.createdAt = createdAt instanceof Timestamp
-      ? createdAt
-      : new Timestamp(createdAt);
+  changeUsername(newUsername) {
+    if (!newUsername?.trim()) {
+      throw new Error("Invalid username");
+    }
+    this.username = newUsername;
   }
 
   equals(other) {
-    return other instanceof User && this.id.equals(other.id);
+    return other?.id?.equals?.(this.id);
   }
 }
 
