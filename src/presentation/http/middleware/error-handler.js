@@ -5,6 +5,8 @@ const mapError =
 
 function errorHandler(err, req, res, next) {
 
+  console.error(err);
+
   const mapped = mapError(err);
 
   return res

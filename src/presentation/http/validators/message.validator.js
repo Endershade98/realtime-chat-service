@@ -1,33 +1,35 @@
 // src/presentation/http/validators/message.validator.js
 
-function validateSendMessage(req, res, next) {
-  const {
-    conversationId,
-    senderId,
-    content
-  } = req.body;
+function validateSendMessage(body) {
 
-  if (!conversationId) {
-    return res.status(400).json({
-      error: 'conversationId is required'
-    });
+  if (!body.conversationId) {
+
+    return {
+      error: new Error(
+        'conversationId is required'
+      )
+    };
   }
 
-  if (!senderId) {
-    return res.status(400).json({
-      error: 'senderId is required'
-    });
+  if (!body.senderId) {
+
+    return {
+      error: new Error(
+        'senderId is required'
+      )
+    };
   }
 
-  if (!content || !content.trim()) {
-    return res.status(400).json({
-      error: 'content is required'
-    });
+  if (!body.content) {
+
+    return {
+      error: new Error(
+        'content is required'
+      )
+    };
   }
 
-  next();
+  return { error: null };
 }
 
-module.exports = {
-  validateSendMessage
-};
+module.exports = validateSendMessage;

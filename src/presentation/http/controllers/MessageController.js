@@ -22,12 +22,16 @@ class MessageController {
       );
   }
 
-  async sendMessage(req, res, next) {
+  async send(req, res, next) {
 
     try {
 
       const message =
-        await this.sendMessageUseCase.execute(req.body);
+        await this.sendMessageUseCase.execute({
+          conversationId: req.body.conversationId,
+          senderId: req.body.senderId,
+          content: req.body.content
+        });
 
       return res.status(201).json(
         serializeMessage(message)

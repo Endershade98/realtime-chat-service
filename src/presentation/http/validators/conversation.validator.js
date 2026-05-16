@@ -1,17 +1,20 @@
 // src/presentation/http/validators/conversation.validator.js
 
-function validateCreateConversation(req, res, next) {
-  const { title } = req.body;
+function validateCreateConversation(body) {
 
-  if (!title) {
-    return res.status(400).json({
-      error: 'title is required'
-    });
+  if (
+    !body.participants ||
+    !Array.isArray(body.participants)
+  ) {
+
+    return {
+      error: new Error(
+        'participants must be an array'
+      )
+    };
   }
 
-  next();
+  return { error: null };
 }
 
-module.exports = {
-  validateCreateConversation
-};
+module.exports = validateCreateConversation;

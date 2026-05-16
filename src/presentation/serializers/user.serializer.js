@@ -1,9 +1,11 @@
 // src/presentation/serializers/user.serializer.js
 
-module.exports = function serializeUser(entity) {
+module.exports = function serializeUser(user) {
+
   return {
-    id: entity.id,
-    name: entity.name,
-    email: entity.email
+    id: user.id.toString(),
+    username: user.username,
+    email: user.email,
+    createdAt: user.createdAt
   };
 };

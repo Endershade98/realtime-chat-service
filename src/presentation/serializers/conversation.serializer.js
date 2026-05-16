@@ -1,11 +1,15 @@
 // src/presentation/serializers/conversation.serializer.js
 
-module.exports = function serializeConversation(entity) {
+module.exports = function serializeConversation(
+  conversation
+) {
+
   return {
-    id: entity.id,
-    title: entity.title,
-    participants: entity.participants,
-    createdAt: entity.createdAt,
-    updatedAt: entity.updatedAt
+    id: conversation.id.toString(),
+    title: conversation.title,
+    participants:
+      conversation.participants.map(
+        p => p.userId.toString()
+      )
   };
 };
