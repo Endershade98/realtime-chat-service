@@ -37,7 +37,7 @@ describe('Message', () => {
 
     msg.markDelivered();
 
-    expect(msg.status).toBe('delivered');
+    expect(msg.deliveredAt).not.toBeNull();
   });
 
 });

@@ -4,11 +4,15 @@ const ConversationId = require('../value-objects/ConversationId');
 const UserId = require('../value-objects/UserId');
 const Participant = require('./Participant');
 const AggregateRoot = require('../aggregates/AggregateRoot');
-const UserConnected = require('../events/UserConnected');
+
 const ConversationCreated = require('../events/ConversationCreated');
+const UserConnected = require('../events/UserConnected');
+
+const ValidationError = require('../errors/ValidationError');
+const BusinessRuleError = require('../errors/BusinessRuleError');
 
 class Conversation extends AggregateRoot {
-  constructor({ id, participants = [], title, createdAt } = {}) {
+  constructor({ id, title, participants = [], createdAt } = {}) {
     super();
 
     this._id = id instanceof ConversationId ? id : new ConversationId();
@@ -22,11 +26,15 @@ class Conversation extends AggregateRoot {
     Object.freeze(this._id);
   }
 
-  // ------------------------
-  // FACTORY METHOD (DDD PURE)
-  // ------------------------
+  // =========================================================
+  // FACTORY (DDD entry point)
+  // =========================================================
   static create({ title, creatorUserId }) {
-    const conversation = new Conversation({ title });
+    if (!title || typeof title !== 'string' || title.trim() === '') {
+      throw new ValidationError('Conversation title is required');
+    }
+
+    const conversation = new Conversation({ title: title.trim() });
 
     if (creatorUserId) {
       conversation.addParticipant(creatorUserId);
@@ -35,21 +43,21 @@ class Conversation extends AggregateRoot {
     conversation.addEvent(
       new ConversationCreated({
         conversationId: conversation.id.toString(),
-        title
+        title: conversation.title
       })
     );
 
     return conversation;
   }
 
-  // ------------------------
+  // =========================================================
   // BEHAVIOR
-  // ------------------------
+  // =========================================================
   addParticipant(userId) {
-    const uid = userId instanceof UserId ? userId : new UserId(userId);
+    const uid = this._normalizeUserId(userId);
 
     if (this.hasParticipant(uid)) {
-      throw new Error('Participant already exists');
+      throw new BusinessRuleError('Participant already exists');
     }
 
     this._participants.push(new Participant({ userId: uid }));
@@ -63,26 +71,45 @@ class Conversation extends AggregateRoot {
   }
 
   removeParticipant(userId) {
-    const uid = userId instanceof UserId ? userId : new UserId(userId);
+    const uid = this._normalizeUserId(userId);
 
     const index = this._participants.findIndex(p =>
       p.userId.equals(uid)
     );
 
     if (index === -1) {
-      throw new Error('Participant not found');
+      throw new BusinessRuleError('Participant not found');
+    }
+
+    if (this._participants.length <= 1) {
+      throw new BusinessRuleError('Conversation cannot be empty');
     }
 
     this._participants.splice(index, 1);
+  }
 
-    if (this._participants.length === 0) {
-      throw new Error('Conversation cannot be empty');
+  // =========================================================
+  // DOMAIN RULES
+  // =========================================================
+  validateParticipants() {
+    if (this._participants.length > 0 && this._participants.length < 2) {
+      throw new BusinessRuleError(
+        'Conversation must contain at least 2 participants'
+      );
     }
   }
 
-  // ------------------------
+  hasParticipant(userId) {
+    const uid = this._normalizeUserId(userId);
+
+    return this._participants.some(p =>
+      p.userId.equals(uid)
+    );
+  }
+
+  // =========================================================
   // GETTERS
-  // ------------------------
+  // =========================================================
   get id() {
     return this._id;
   }
@@ -91,19 +118,25 @@ class Conversation extends AggregateRoot {
     return this._title;
   }
 
+  get createdAt() {
+    return this._createdAt;
+  }
+
   get participants() {
     return [...this._participants];
   }
 
-  // ------------------------
-  // RULES
-  // ------------------------
-  hasParticipant(userId) {
-    const uid = userId instanceof UserId ? userId : new UserId(userId);
+  // =========================================================
+  // PRIVATE HELPERS
+  // =========================================================
+  _normalizeUserId(userId) {
+    if (!userId) {
+      throw new ValidationError('userId is required');
+    }
 
-    return this._participants.some(p =>
-      p.userId.equals(uid)
-    );
+    return userId instanceof UserId
+      ? userId
+      : new UserId(userId);
   }
 }
 

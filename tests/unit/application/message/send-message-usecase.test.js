@@ -1,28 +1,33 @@
 // tests/unit/application/message/send-message-usecase.test.js
 
+const { v4: uuidv4 } = require('uuid');
+
 const SendMessageUseCase =
-require('../../../../src/application/use-cases/message/SendMessageUseCase');
+  require('../../../../src/application/use-cases/message/SendMessageUseCase');
+
+const ConversationId =
+  require('../../../../src/domain/value-objects/ConversationId');
+
+const UserId =
+  require('../../../../src/domain/value-objects/UserId');
 
 describe('SendMessageUseCase', () => {
 
   it('should send message and publish event', async () => {
 
-    const fakeConversation = {
-      addMessage: jest.fn(() => ({
-        content: 'hello'
-      })),
-      pullEvents: jest.fn(() => [
-        { event: 'MESSAGE_SENT' }
-      ])
-    };
+    const conversationId = uuidv4();
+    const senderId = uuidv4();
 
-    const conversationRepo = {
-      findById: jest.fn(async () => fakeConversation),
-      save: jest.fn(async c => c)
+    const fakeConversation = {
+      hasParticipant: jest.fn(() => true)
     };
 
     const messageRepo = {
-      save: jest.fn(async m => m)
+      save: jest.fn(async (m) => m)
+    };
+
+    const conversationRepo = {
+      findById: jest.fn(async () => fakeConversation)
     };
 
     const bus = {
@@ -31,23 +36,27 @@ describe('SendMessageUseCase', () => {
 
     const useCase =
       new SendMessageUseCase(
-        conversationRepo,
         messageRepo,
+        conversationRepo,
         bus
       );
 
     const result =
       await useCase.execute({
-        conversationId: '123',
-        senderId: '456',
+        conversationId,
+        senderId,
         content: 'hello'
       });
 
     expect(conversationRepo.findById)
-      .toHaveBeenCalled();
+      .toHaveBeenCalledWith(
+        expect.any(ConversationId)
+      );
 
-    expect(fakeConversation.addMessage)
-      .toHaveBeenCalled();
+    expect(fakeConversation.hasParticipant)
+      .toHaveBeenCalledWith(
+        expect.any(UserId)
+      );
 
     expect(messageRepo.save)
       .toHaveBeenCalled();
@@ -55,29 +64,75 @@ describe('SendMessageUseCase', () => {
     expect(bus.publish)
       .toHaveBeenCalled();
 
-    expect(result.content).toBe('hello');
+    expect(result.content)
+      .toBe('hello');
   });
 
   it('should throw if conversation not found', async () => {
 
+    const messageRepo = {
+      save: jest.fn()
+    };
+
+    const conversationRepo = {
+      findById: jest.fn(async () => null)
+    };
+
+    const bus = {
+      publish: jest.fn()
+    };
+
     const useCase =
       new SendMessageUseCase(
-        {
-          findById: jest.fn(async () => null),
-          save: jest.fn()
-        },
-        { save: jest.fn() },
-        { publish: jest.fn() }
+        messageRepo,
+        conversationRepo,
+        bus
       );
 
     await expect(
       useCase.execute({
-        conversationId: '1',
-        senderId: '2',
+        conversationId: uuidv4(),
+        senderId: uuidv4(),
         content: 'x'
       })
     ).rejects.toThrow(
       'Conversation not found'
+    );
+  });
+
+  it('should throw if sender is not participant', async () => {
+
+    const fakeConversation = {
+      hasParticipant: jest.fn(() => false)
+    };
+
+    const messageRepo = {
+      save: jest.fn()
+    };
+
+    const conversationRepo = {
+      findById: jest.fn(async () => fakeConversation)
+    };
+
+    const bus = {
+      publish: jest.fn()
+    };
+
+    const useCase =
+      new SendMessageUseCase(
+        messageRepo,
+        conversationRepo,
+        bus
+      );
+
+    await expect(
+      useCase.execute({
+        conversationId: uuidv4(),
+        senderId: uuidv4(),
+        content: 'hello'
+      })
+    ).rejects.toThrow(
+      'Sender is not part of conversation'
     );
   });
 

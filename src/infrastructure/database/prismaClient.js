@@ -1,4 +1,5 @@
 // src/infrastructure/database/prismaClient.js
+
 const { PrismaClient } = require('@prisma/client');
 
 let prisma = null;

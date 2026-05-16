@@ -1,3 +1,5 @@
+// src/presentation/websocket/websocket.gateway.js
+
 const WebSocket = require('ws');
 require('dotenv').config();
 
