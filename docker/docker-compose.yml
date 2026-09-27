@@ -1,7 +1,7 @@
 services:
-  db:
-    image: postgres:16
-    container_name: realtime_chat_db
+  postgres:
+    image: postgres:16-alpine
+    container_name: realtime_chat_postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -10,21 +10,45 @@ services:
     ports:
       - "55432:5432"
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-  db_test:
-    image: postgres:16
-    container_name: realtime_chat_db_test
+  postgres_test:
+    image: postgres:16-alpine
+    container_name: realtime_chat_postgres_test
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: realtime_chat_db_test
     ports:
-      - "55433:5432" 
+      - "55433:5432"
     volumes:
-      - db-test-data:/var/lib/postgresql/data
+      - pgdata_test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: realtime_chat_app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/realtime_chat_db
 
 volumes:
-  db-data:
-  db-test-data:
+  pgdata:
+  pgdata_test:

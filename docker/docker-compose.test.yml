@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+
+  postgres_test:
+    image: postgres:16-alpine
+
+    container_name: realtime_chat_postgres_test
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: realtime_chat_test
+
+    ports:
+      - "5433:5432"
+
+  tests:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+
+    depends_on:
+      - postgres_test
+
+    env_file:
+      - ../.env.test
+
+    command: sh docker/entrypoints/test.entrypoint.sh
