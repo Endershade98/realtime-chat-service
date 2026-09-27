@@ -3,8 +3,13 @@
 const DomainEvent = require('./DomainEvent');
 
 class MessageSent extends DomainEvent {
-  constructor({ messageId, conversationId, senderId, content }) {
-    super(`MESSAGE_SENT`, {
+  constructor({
+    messageId,
+    conversationId,
+    senderId,
+    content
+  }) {
+    super('MESSAGE_SENT', {
       messageId,
       conversationId,
       senderId,

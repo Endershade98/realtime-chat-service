@@ -18,6 +18,9 @@ const Timestamp =
 const MessageSent =
   require('../events/MessageSent');
 
+const ValidationError =
+  require('../errors/ValidationError');
+
 class Message extends AggregateRoot {
 
   constructor({
@@ -33,8 +36,12 @@ class Message extends AggregateRoot {
 
     super();
 
-    if (!content || content.trim() === '') {
-      throw new Error(
+    if (
+      !content ||
+      typeof content !== 'string' ||
+      !content.trim()
+    ) {
+      throw new ValidationError(
         'Message content cannot be empty'
       );
     }
@@ -54,7 +61,7 @@ class Message extends AggregateRoot {
         ? senderId
         : new UserId(senderId);
 
-    this._content = content;
+    this._content = content.trim();
 
     this._type = type;
 
@@ -64,22 +71,86 @@ class Message extends AggregateRoot {
         : new Timestamp(createdAt);
 
     this._deliveredAt =
-      deliveredAt ? new Timestamp(deliveredAt) : null;
+      deliveredAt
+        ? new Timestamp(deliveredAt)
+        : null;
 
     this._readAt =
-      readAt ? new Timestamp(readAt) : null;
-
-    this.addEvent(
-      new MessageSent({
-        messageId: this._id.toString(),
-        conversationId: this._conversationId.toString(),
-        senderId: this._senderId.toString(),
-        content: this._content
-      })
-    );
+      readAt
+        ? new Timestamp(readAt)
+        : null;
   }
 
-  // ---------------- GETTERS ----------------
+  // =========================================================
+  // FACTORY - NEW MESSAGE
+  // =========================================================
+
+  static create({
+    conversationId,
+    senderId,
+    content,
+    type = 'text'
+  }) {
+
+    const message =
+      new Message({
+        id: new MessageId(),
+        conversationId,
+        senderId,
+        content,
+        type,
+        createdAt: new Timestamp()
+      });
+
+    message.addEvent(
+      new MessageSent({
+        messageId:
+          message.id.toString(),
+
+        conversationId:
+          message.conversationId.toString(),
+
+        senderId:
+          message.senderId.toString(),
+
+        content:
+          message.content
+      })
+    );
+
+    return message;
+  }
+
+  // =========================================================
+  // FACTORY - REHYDRATION FROM PERSISTENCE
+  // =========================================================
+
+  static reconstitute({
+    id,
+    conversationId,
+    senderId,
+    content,
+    type = 'text',
+    createdAt,
+    deliveredAt = null,
+    readAt = null
+  }) {
+
+    return new Message({
+      id,
+      conversationId,
+      senderId,
+      content,
+      type,
+      createdAt,
+      deliveredAt,
+      readAt
+    });
+  }
+
+  // =========================================================
+  // GETTERS
+  // =========================================================
 
   get id() {
     return this._id;
@@ -113,14 +184,18 @@ class Message extends AggregateRoot {
     return this._readAt;
   }
 
-  // ---------------- BEHAVIOR ----------------
+  // =========================================================
+  // BEHAVIOR
+  // =========================================================
 
   markDelivered() {
-    this._deliveredAt = new Timestamp();
+    this._deliveredAt =
+      new Timestamp();
   }
 
   markRead() {
-    this._readAt = new Timestamp();
+    this._readAt =
+      new Timestamp();
   }
 
   isRead() {
@@ -128,8 +203,11 @@ class Message extends AggregateRoot {
   }
 
   equals(other) {
-    return other instanceof Message &&
-      this.id.equals(other.id);
+
+    return (
+      other instanceof Message &&
+      this.id.equals(other.id)
+    );
   }
 }
 

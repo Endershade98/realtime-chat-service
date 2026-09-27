@@ -7,12 +7,18 @@ class AggregateRoot {
   }
 
   addEvent(event) {
+    if (!event) {
+      throw new Error('Domain event is required');
+    }
+
     this._events.push(event);
   }
 
   pullEvents() {
     const events = [...this._events];
+
     this._events = [];
+
     return events;
   }
 
@@ -21,7 +27,7 @@ class AggregateRoot {
   }
 
   incrementVersion() {
-    this._version++;
+    this._version += 1;
   }
 }
 
