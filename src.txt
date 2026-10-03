@@ -1,0 +1,2179 @@
+
+===== src/domain/repositories/UserRepository.js =====
+
+// src/domain/repositories/UserRepository.js
+
+class UserRepository {
+  save(user) {
+    throw new Error("Not implemented");
+  }
+
+  findById(userId) {
+    throw new Error("Not implemented");
+  }
+
+  findAll() {
+    throw new Error("Not implemented");
+  }
+
+  remove(userId) {
+    throw new Error("Not implemented");
+  }
+}
+
+module.exports = UserRepository;
+===== src/domain/repositories/ConversationRepository.js =====
+
+// src/domain/repositories/ConversationRepository.js
+
+class ConversationRepository {
+  save(conversation) {
+    throw new Error("Not implemented");
+  }
+
+  findById(conversationId) {
+    throw new Error("Not implemented");
+  }
+
+  findAll() {
+    throw new Error("Not implemented");
+  }
+
+  remove(conversationId) {
+    throw new Error("Not implemented");
+  }
+}
+===== src/domain/repositories/MessageRepository.js =====
+
+// src/domain/repositories/MessageRepository.js
+
+class MessageRepository {
+  save(message) {
+    throw new Error("Not implemented");
+  }
+
+  findById(messageId) {
+    throw new Error("Not implemented");
+  }
+
+  findByConversation(conversationId) {
+    throw new Error("Not implemented");
+  }
+}
+===== src/domain/value-objects/MessageId.js =====
+
+// src/domain/value-objects/MessageId.js
+
+const { v4: uuidv4, validate: uuidValidate } = require('uuid');
+
+class MessageId {
+  constructor(value) {
+    if (value !== undefined && value !== null && !uuidValidate(value)) {
+      throw new Error("Invalid MessageId");
+    }
+
+    const _value = value ?? uuidv4();
+
+    Object.defineProperty(this, 'value', {
+      get: () => _value,
+      set: () => {
+        throw new Error('Cannot modify immutable value');
+      },
+      enumerable: true
+    });
+
+    Object.freeze(this);
+  }
+
+  toString() {
+    return this.value;
+  }
+
+  equals(other) {
+    return other instanceof MessageId && this.value === other.value;
+  }
+}
+
+module.exports = MessageId;
+===== src/domain/value-objects/ConversationId.js =====
+
+// src/domain/value-objects/ConversationId.js
+
+const { v4: uuidv4, validate: uuidValidate } = require('uuid');
+
+class ConversationId {
+  constructor(value) {
+    if (value !== undefined && value !== null && !uuidValidate(value)) {
+      throw new Error("Invalid ConversationId");
+    }
+
+    const _value = value ?? uuidv4();
+
+    Object.defineProperty(this, 'value', {
+      get: () => _value,
+      set: () => {
+        throw new Error('Cannot modify immutable value');
+      },
+      enumerable: true
+    });
+
+    Object.freeze(this);
+  }
+
+  toString() {
+    return this.value;
+  }
+
+  equals(other) {
+    return other instanceof ConversationId && this.value === other.value;
+  }
+}
+
+module.exports = ConversationId;
+===== src/domain/value-objects/UserId.js =====
+
+// src/domain/value-objects/UserId.js
+
+const { v4: uuidv4, validate: uuidValidate } = require('uuid');
+
+class UserId {
+  constructor(value) {
+    if (value !== undefined && value !== null && !uuidValidate(value)) {
+      throw new Error("Invalid UserId");
+    }
+
+    const _value = value ?? uuidv4();
+
+    Object.defineProperty(this, 'value', {
+      get: () => _value,
+      set: () => {
+        throw new Error('Cannot modify immutable value');
+      },
+      enumerable: true
+    });
+
+    Object.freeze(this);
+  }
+
+  toString() {
+    return this.value;
+  }
+
+  equals(other) {
+    return other instanceof UserId && this.value === other.value;
+  }
+}
+
+module.exports = UserId;
+===== src/domain/value-objects/Timestamp.js =====
+
+// src/domain/value-objects/Timestamp.js
+
+class Timestamp {
+  constructor(value) {
+    const date = value ? new Date(value) : new Date();
+
+    if (isNaN(date.getTime())) {
+      throw new Error("Invalid Timestamp");
+    }
+
+    const _value = date;
+
+    Object.defineProperty(this, "_value", {
+      value: _value,
+      writable: false,
+      enumerable: false,
+    });
+
+    Object.freeze(this);
+  }
+
+  get value() {
+    return this._value;
+  }
+
+  toDate() {
+    return this._value;
+  }
+
+  toISOString() {
+    return this._value.toISOString();
+  }
+
+  toString() {
+    return this._value.toISOString();
+  }
+
+  equals(other) {
+    return (
+      other instanceof Timestamp &&
+      this._value.getTime() === other._value.getTime()
+    );
+  }
+}
+
+module.exports = Timestamp;
+===== src/domain/entities/Conversation.js =====
+
+// src/domain/entities/Conversation.js
+
+const ConversationId = require('../value-objects/ConversationId');
+const UserId = require('../value-objects/UserId');
+const Participant = require('./Participant');
+const AggregateRoot = require('../aggregates/AggregateRoot');
+
+const ConversationCreated = require('../events/ConversationCreated');
+const UserConnected = require('../events/UserConnected');
+
+const ValidationError = require('../errors/ValidationError');
+const BusinessRuleError = require('../errors/BusinessRuleError');
+
+class Conversation extends AggregateRoot {
+  constructor({ id, title, participants = [], createdAt } = {}) {
+    super();
+
+    this._id = id instanceof ConversationId ? id : new ConversationId();
+    this._title = title;
+    this._createdAt = createdAt ?? new Date();
+
+    this._participants = participants.map(p =>
+      p instanceof Participant ? p : new Participant(p)
+    );
+
+    Object.freeze(this._id);
+  }
+
+  // =========================================================
+  // FACTORY (DDD entry point)
+  // =========================================================
+  static create({ title, creatorUserId }) {
+    if (!title || typeof title !== 'string' || title.trim() === '') {
+      throw new ValidationError('Conversation title is required');
+    }
+
+    const conversation = new Conversation({ title: title.trim() });
+
+    if (creatorUserId) {
+      conversation.addParticipant(creatorUserId);
+    }
+
+    conversation.addEvent(
+      new ConversationCreated({
+        conversationId: conversation.id.toString(),
+        title: conversation.title
+      })
+    );
+
+    return conversation;
+  }
+
+  // =========================================================
+  // BEHAVIOR
+  // =========================================================
+  addParticipant(userId) {
+    const uid = this._normalizeUserId(userId);
+
+    if (this.hasParticipant(uid)) {
+      throw new BusinessRuleError('Participant already exists');
+    }
+
+    this._participants.push(new Participant({ userId: uid }));
+
+    this.addEvent(
+      new UserConnected({
+        userId: uid.toString(),
+        conversationId: this._id.toString()
+      })
+    );
+  }
+
+  removeParticipant(userId) {
+    const uid = this._normalizeUserId(userId);
+
+    const index = this._participants.findIndex(p =>
+      p.userId.equals(uid)
+    );
+
+    if (index === -1) {
+      throw new BusinessRuleError('Participant not found');
+    }
+
+    if (this._participants.length <= 1) {
+      throw new BusinessRuleError('Conversation cannot be empty');
+    }
+
+    this._participants.splice(index, 1);
+  }
+
+  // =========================================================
+  // DOMAIN RULES
+  // =========================================================
+  validateParticipants() {
+    if (this._participants.length > 0 && this._participants.length < 2) {
+      throw new BusinessRuleError(
+        'Conversation must contain at least 2 participants'
+      );
+    }
+  }
+
+  hasParticipant(userId) {
+    const uid = this._normalizeUserId(userId);
+
+    return this._participants.some(p =>
+      p.userId.equals(uid)
+    );
+  }
+
+  // =========================================================
+  // GETTERS
+  // =========================================================
+  get id() {
+    return this._id;
+  }
+
+  get title() {
+    return this._title;
+  }
+
+  get createdAt() {
+    return this._createdAt;
+  }
+
+  get participants() {
+    return [...this._participants];
+  }
+
+  // =========================================================
+  // PRIVATE HELPERS
+  // =========================================================
+  _normalizeUserId(userId) {
+    if (!userId) {
+      throw new ValidationError('userId is required');
+    }
+
+    return userId instanceof UserId
+      ? userId
+      : new UserId(userId);
+  }
+}
+
+module.exports = Conversation;
+===== src/domain/entities/Message.js =====
+
+// src/domain/entities/Message.js
+
+const AggregateRoot =
+  require('../aggregates/AggregateRoot');
+
+const MessageId =
+  require('../value-objects/MessageId');
+
+const ConversationId =
+  require('../value-objects/ConversationId');
+
+const UserId =
+  require('../value-objects/UserId');
+
+const Timestamp =
+  require('../value-objects/Timestamp');
+
+const MessageSent =
+  require('../events/MessageSent');
+
+class Message extends AggregateRoot {
+
+  constructor({
+    id,
+    conversationId,
+    senderId,
+    content,
+    type = 'text',
+    createdAt,
+    deliveredAt = null,
+    readAt = null
+  }) {
+
+    super();
+
+    if (!content || content.trim() === '') {
+      throw new Error(
+        'Message content cannot be empty'
+      );
+    }
+
+    this._id =
+      id instanceof MessageId
+        ? id
+        : new MessageId(id);
+
+    this._conversationId =
+      conversationId instanceof ConversationId
+        ? conversationId
+        : new ConversationId(conversationId);
+
+    this._senderId =
+      senderId instanceof UserId
+        ? senderId
+        : new UserId(senderId);
+
+    this._content = content;
+
+    this._type = type;
+
+    this._createdAt =
+      createdAt instanceof Timestamp
+        ? createdAt
+        : new Timestamp(createdAt);
+
+    this._deliveredAt =
+      deliveredAt ? new Timestamp(deliveredAt) : null;
+
+    this._readAt =
+      readAt ? new Timestamp(readAt) : null;
+
+    this.addEvent(
+      new MessageSent({
+        messageId: this._id.toString(),
+        conversationId: this._conversationId.toString(),
+        senderId: this._senderId.toString(),
+        content: this._content
+      })
+    );
+  }
+
+  // ---------------- GETTERS ----------------
+
+  get id() {
+    return this._id;
+  }
+
+  get conversationId() {
+    return this._conversationId;
+  }
+
+  get senderId() {
+    return this._senderId;
+  }
+
+  get content() {
+    return this._content;
+  }
+
+  get type() {
+    return this._type;
+  }
+
+  get createdAt() {
+    return this._createdAt;
+  }
+
+  get deliveredAt() {
+    return this._deliveredAt;
+  }
+
+  get readAt() {
+    return this._readAt;
+  }
+
+  // ---------------- BEHAVIOR ----------------
+
+  markDelivered() {
+    this._deliveredAt = new Timestamp();
+  }
+
+  markRead() {
+    this._readAt = new Timestamp();
+  }
+
+  isRead() {
+    return this._readAt !== null;
+  }
+
+  equals(other) {
+    return other instanceof Message &&
+      this.id.equals(other.id);
+  }
+}
+
+module.exports = Message;
+===== src/domain/entities/User.js =====
+
+// src/domain/entities/User.js
+
+const UserId = require('../value-objects/UserId');
+const Timestamp = require('../value-objects/Timestamp');
+
+class User {
+  constructor({ id, username, email, createdAt }) {
+    if (!username?.trim()) throw new Error("Username required");
+    if (!email?.trim()) throw new Error("Email required");
+
+    this.id = id;
+    this.username = username;
+    this.email = email;
+    this.createdAt = createdAt;
+  }
+
+  changeUsername(newUsername) {
+    if (!newUsername?.trim()) {
+      throw new Error("Invalid username");
+    }
+    this.username = newUsername;
+  }
+
+  equals(other) {
+    return other?.id?.equals?.(this.id);
+  }
+}
+
+module.exports = User;
+===== src/domain/entities/Participant.js =====
+
+// src/domain/entities/Participant.js
+
+const UserId = require('../value-objects/UserId');
+
+class Participant {
+  constructor({ userId, role = 'member' }) {
+    this.userId = userId;
+    this.role = role;
+  }
+
+  isAdmin() {
+    return this.role === 'admin';
+  }
+}
+
+module.exports = Participant;
+===== src/domain/events/MessageDelivered.js =====
+
+// src/domain/events/MessageDelivered.js
+
+const DomainEvent = require('./DomainEvent');
+
+class MessageDelivered extends DomainEvent {
+  constructor({ messageId, conversationId, recipientId, deliveredAt }) {
+    super('MESSAGE_DELIVERED', {
+      messageId,
+      conversationId,
+      recipientId,
+      deliveredAt
+    });
+  }
+}
+
+module.exports = MessageDelivered;
+===== src/domain/events/MessageRead.js =====
+
+// src/domain/events/MessageRead.js
+
+const DomainEvent = require('./DomainEvent');
+
+class MessageRead extends DomainEvent {
+  constructor({ messageId, conversationId, readerId, readAt }) {
+    super('MESSAGE_READ', {
+      messageId,
+      conversationId,
+      readerId,
+      readAt
+    });
+  }
+}
+
+module.exports = MessageRead;
+===== src/domain/events/MessageSent.js =====
+
+// src/domain/events/MessageSent.js
+
+const DomainEvent = require('./DomainEvent');
+
+class MessageSent extends DomainEvent {
+  constructor({ messageId, conversationId, senderId, content }) {
+    super(`MESSAGE_SENT`, {
+      messageId,
+      conversationId,
+      senderId,
+      content
+    });
+  }
+}
+
+module.exports = MessageSent;
+===== src/domain/events/UserConnected.js =====
+
+// src/domain/events/UserConnected.js
+
+const DomainEvent = require('./DomainEvent');
+
+class UserConnected extends DomainEvent {
+  constructor({ userId, socketId }) {
+    super('USER_CONNECTED', {
+      userId,
+      socketId
+    });
+  }
+}
+
+module.exports = UserConnected;
+===== src/domain/events/UserTyping.js =====
+
+// src/domain/events/UserTyping.js
+
+const DomainEvent = require('./DomainEvent');
+
+
+class UserTyping extends DomainEvent {
+  constructor({ userId, conversationId, isTyping }) {
+    super('USER_TYPING', {
+      userId,
+      conversationId,
+      isTyping
+    });
+  }
+}
+
+module.exports = UserTyping;
+===== src/domain/events/DomainEvent.js =====
+
+// src/domain/events/DomainEvent.js
+
+class DomainEvent {
+  constructor(type, data = {}) {
+    this.type = type;
+    this.data = data;
+    this.timestamp = new Date().toISOString();
+  }
+
+  toJSON() {
+    return {
+      type: this.type,
+      data: this.data,
+      timestamp: this.timestamp
+    };
+  }
+}
+
+module.exports = DomainEvent;
+===== src/domain/events/ConversationCreated.js =====
+
+// src/domain/events/ConversationCreated.js
+
+const DomainEvent = require('./DomainEvent');
+
+class ConversationCreated extends DomainEvent {
+  constructor({ conversationId, title }) {
+    super('CONVERSATION_CREATED', {
+      conversationId,
+      title
+    });
+  }
+}
+
+module.exports = ConversationCreated;
+===== src/domain/aggregates/ConversationAggregate.js =====
+
+// src/domain/aggregates/ConversationAggregate.js
+
+const AggregateRoot = require('../aggregates/AggregateRoot');
+const Message = require('../entities/Message');
+const MessageSent = require('../events/MessageSent');
+
+class ConversationAggregate extends AggregateRoot {
+  constructor(conversation) {
+    super();
+    this.conversation = conversation;
+    this.messages = [];
+    this.participants = [];
+  }
+
+  addMessage({ messageId, senderId, content, createdAt }) {
+    if (!this.isParticipant(senderId)) {
+      throw new Error("User not in conversation");
+    }
+
+    const message = new Message({
+      id: messageId,
+      conversationId: this.conversation.id,
+      senderId,
+      content,
+      createdAt
+    });
+
+    this.messages.push(message);
+
+    this.addEvent(
+      new MessageSent({
+        messageId,
+        conversationId: this.conversation.id,
+        senderId,
+        content
+      })
+    );
+
+    return message;
+  }
+
+  isParticipant(userId) {
+    return this.participants.some(p => p.userId.equals(userId));
+  }
+}
+
+module.exports = ConversationAggregate;
+===== src/domain/aggregates/AggregateRoot.js =====
+
+// src/domain/aggregates/AggregateRoot.js
+
+class AggregateRoot {
+  constructor() {
+    this._events = [];
+    this._version = 0;
+  }
+
+  addEvent(event) {
+    this._events.push(event);
+  }
+
+  pullEvents() {
+    const events = [...this._events];
+    this._events = [];
+    return events;
+  }
+
+  get version() {
+    return this._version;
+  }
+
+  incrementVersion() {
+    this._version++;
+  }
+}
+
+module.exports = AggregateRoot;
+===== src/domain/errors/DomainError.js =====
+
+// src/domain/errors/DomainError.js
+
+class DomainError extends Error {
+  constructor(message) {
+    super(message);
+
+    this.name = this.constructor.name;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+module.exports = DomainError;
+===== src/domain/errors/ValidationError.js =====
+
+// src/domain/errors/ValidationError.js
+
+const DomainError = require('./DomainError');
+
+class ValidationError extends DomainError {}
+
+module.exports = ValidationError;
+===== src/domain/errors/BusinessRuleError.js =====
+
+// src/domain/errors/BusinessRuleError.js
+
+const DomainError = require('./DomainError');
+
+class BusinessRuleError extends DomainError {}
+
+module.exports = BusinessRuleError;
+===== src/infrastructure/database/prismaClient.js =====
+
+// src/infrastructure/database/prismaClient.js
+
+const { PrismaClient } =
+  require('@prisma/client');
+
+let prisma;
+
+function getPrismaClient() {
+
+  if (!prisma) {
+
+    prisma = new PrismaClient({
+      log: ['query', 'error', 'warn']
+    });
+  }
+
+  return prisma;
+}
+
+module.exports = {
+  getPrismaClient
+};
+===== src/infrastructure/redis/redisClient.js =====
+
+
+===== src/infrastructure/repositories/in-memory/ConversationRepository.js =====
+
+// src/infrastructure/repositories/in-memory/ConversationRepository.js
+
+class ConversationRepository {
+  constructor() {
+    this.store = new Map();
+  }
+
+  save(conversation) {
+    if (!conversation) throw new Error('Conversation is required');
+
+    const id = conversation.id.toString
+      ? conversation.id.toString()
+      : String(conversation.id);
+
+    this.store.set(id, conversation);
+    return conversation;
+  }
+
+  findById(conversationId) {
+    const id = conversationId?.toString?.() ?? String(conversationId);
+    return this.store.get(id) || null;
+  }
+
+  findAll() {
+    return Array.from(this.store.values());
+  }
+}
+
+module.exports = ConversationRepository;
+===== src/infrastructure/repositories/in-memory/MessageRepository.js =====
+
+// src/infrastructure/repositories/in-memory/MessageRepository.js
+
+class MessageRepository {
+  constructor() {
+    this.store = new Map();
+  }
+
+  save(message) {
+    if (!message) throw new Error('Message is required');
+    if (!message.id) throw new Error('Message must have id');
+
+    const id = message.id.toString ? message.id.toString() : String(message.id);
+
+    this.store.set(id, message);
+    return message;
+  }
+
+  findById(messageId) {
+    const id = messageId?.toString?.() ?? String(messageId);
+    return this.store.get(id) || null;
+  }
+
+  findAllByConversationId(conversationId) {
+    const cid = conversationId?.toString?.() ?? String(conversationId);
+
+    return Array.from(this.store.values()).filter(
+      msg => msg.conversationId?.toString?.() === cid
+    );
+  }
+}
+
+module.exports = MessageRepository;
+===== src/infrastructure/repositories/in-memory/UserRepository.js =====
+
+// src/infrastructure/repositories/in-memory/UserRepository.js
+
+class UserRepository {
+  constructor() {
+    this.store = new Map();
+  }
+
+  save(user) {
+    if (!user) throw new Error('User is required');
+    if (!user.id) throw new Error('User must have id');
+
+    const id = user.id.toString ? user.id.toString() : String(user.id);
+
+    this.store.set(id, user);
+    return user;
+  }
+
+  findById(userId) {
+    const id = userId?.toString?.() ?? String(userId);
+    return this.store.get(id) || null;
+  }
+
+  findAll() {
+    return Array.from(this.store.values());
+  }
+}
+
+module.exports = UserRepository;
+===== src/infrastructure/repositories/postgres/PostgresConversationRepository.js =====
+
+// src/infrastructure/repositories/postgres/PostgresConversationRepository.js
+
+const Conversation = require('../../../domain/entities/Conversation');
+const ConversationId = require('../../../domain/value-objects/ConversationId');
+
+class PostgresConversationRepository {
+  constructor(prisma) {
+    this.prisma = prisma;
+  }
+
+  async save(conversation) {
+    const created = await this.prisma.conversation.create({
+      data: {
+        id: conversation.id.value,
+        title: conversation.title,
+        createdAt: conversation.createdAt,
+      },
+    });
+
+    return new Conversation({
+      id: new ConversationId(created.id),
+      title: created.title,
+      createdAt: created.createdAt,
+    });
+  }
+
+  async findById(conversationId) {
+    const id = conversationId.value ?? conversationId;
+
+    const found = await this.prisma.conversation.findUnique({
+      where: { id },
+    });
+
+    if (!found) return null;
+
+    return new Conversation({
+      id: new ConversationId(found.id),
+      title: found.title,
+      createdAt: found.createdAt,
+    });
+  }
+
+  async findAll() {
+    const rows = await this.prisma.conversation.findMany();
+
+    return rows.map(
+      (c) =>
+        new Conversation({
+          id: new ConversationId(c.id),
+          title: c.title,
+          createdAt: c.createdAt,
+        })
+    );
+  }
+}
+
+module.exports = PostgresConversationRepository;
+===== src/infrastructure/repositories/postgres/PostgresMessageRepository.js =====
+
+// src/infrastructure/repositories/postgres/PostgresMessageRepository.js
+
+const Message = require('../../../domain/entities/Message');
+const MessageId = require('../../../domain/value-objects/MessageId');
+const ConversationId = require('../../../domain/value-objects/ConversationId');
+const UserId = require('../../../domain/value-objects/UserId');
+const Timestamp = require('../../../domain/value-objects/Timestamp');
+
+
+class PostgresMessageRepository {
+
+  constructor(prisma) {
+
+    if (!prisma) {
+      throw new Error('Prisma client is required');
+    }
+
+    this.prisma = prisma;
+  }
+
+  async save(message) {
+
+    const created = await this.prisma.message.create({
+      data: {
+        id: message.id.value,
+        conversationId: message.conversationId.value,
+        senderId: message.senderId.value,
+        content: message.content,
+        createdAt: message.createdAt.value
+      }
+    });
+
+    return new Message({
+      id: new MessageId(created.id),
+      conversationId: new ConversationId(created.conversationId),
+      senderId: new UserId(created.senderId),
+      content: created.content,
+      createdAt: new Timestamp(created.createdAt)
+    });
+  }
+
+  async findById(messageId) {
+
+    const found = await this.prisma.message.findUnique({
+      where: {
+        id: messageId.value
+      }
+    });
+
+    if (!found) return null;
+
+    return new Message({
+      id: new MessageId(found.id),
+      conversationId: new ConversationId(found.conversationId),
+      senderId: new UserId(found.senderId),
+      content: found.content,
+      createdAt: new Timestamp(found.createdAt)
+    });
+  }
+
+  async findByConversationId(conversationId) {
+
+    const messages = await this.prisma.message.findMany({
+      where: {
+        conversationId: conversationId.value
+      },
+      orderBy: {
+        createdAt: 'asc'
+      }
+    });
+
+    return messages.map(m => new Message({
+      id: new MessageId(m.id),
+      conversationId: new ConversationId(m.conversationId),
+      senderId: new UserId(m.senderId),
+      content: m.content,
+      createdAt: new Timestamp(m.createdAt)
+    }));
+  }
+
+  async delete(messageId) {
+
+    await this.prisma.message.delete({
+      where: {
+        id: messageId.value
+      }
+    });
+  }
+}
+
+module.exports = PostgresMessageRepository;
+===== src/infrastructure/repositories/postgres/PostgresUserRepository.js =====
+
+// src/infrastructure/repositories/postgres/PostgresUserRepository.js
+
+const User = require('../../../domain/entities/User');
+const UserId = require('../../../domain/value-objects/UserId');
+
+class PostgresUserRepository {
+  constructor(prisma) {
+    this.prisma = prisma;
+  }
+
+  async save(user) {
+    const created = await this.prisma.user.create({
+      data: {
+        id: user.id.value,
+        username: user.username,
+        email: user.email,
+        createdAt: user.createdAt,
+      },
+    });
+
+    return new User({
+      id: new UserId(created.id),
+      username: created.username,
+      email: created.email,
+      createdAt: created.createdAt,
+    });
+  }
+
+  async findById(userId) {
+    const id = userId.value ?? userId;
+
+    const found = await this.prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!found) return null;
+
+    return new User({
+      id: new UserId(found.id),
+      username: found.username,
+      email: found.email,
+      createdAt: found.createdAt,
+    });
+  }
+}
+
+module.exports = PostgresUserRepository;
+===== src/infrastructure/_backup_repositories/ConversationRepository.js =====
+
+// src/infrastructure/repositories/ConversationRepository.js
+const Conversation = require('../../domain/entities/Conversation');
+const ConversationId = require('../../domain/value-objects/ConversationId');
+
+class ConversationRepository {
+  constructor() {
+    this.store = new Map(); // id → Conversation
+  }
+
+  save(conversation) {
+    if (!(conversation instanceof Conversation)) {
+      throw new Error('Invalid Conversation');
+    }
+    this.store.set(conversation.id.toString(), conversation);
+    return conversation;
+  }
+
+  findById(conversationId) {
+    const id = conversationId instanceof ConversationId
+      ? conversationId.toString()
+      : conversationId;
+    return this.store.get(id) || null;
+  }
+
+  findAll() {
+    return Array.from(this.store.values());
+  }
+}
+
+module.exports = ConversationRepository;
+===== src/infrastructure/_backup_repositories/MessageRepository.js =====
+
+// src/infrastructure/repositories/MessageRepository.js
+const Message = require('../../domain/entities/Message');
+const MessageId = require('../../domain/value-objects/MessageId');
+
+class MessageRepository {
+  constructor() {
+    this.store = new Map(); // id → Message
+  }
+
+  save(message) {
+    if (!(message instanceof Message)) {
+      throw new Error('Invalid Message');
+    }
+    this.store.set(message.id.toString(), message);
+    return message;
+  }
+
+  findById(messageId) {
+    const id = messageId instanceof MessageId ? messageId.toString() : messageId;
+    return this.store.get(id) || null;
+  }
+
+  findAllByConversationId(conversationId) {
+    const cid = conversationId.toString();
+    return Array.from(this.store.values())
+      .filter(msg => msg.conversationId.toString() === cid);
+  }
+}
+
+module.exports = MessageRepository;
+===== src/infrastructure/_backup_repositories/PostgresConversationRepository.js =====
+
+// src/infrastructure/repositories/PostgresConversationRepository.js
+const { getPrismaClient } = require('../database/prismaClient');
+const Conversation = require('../../domain/entities/Conversation');
+const ConversationId = require('../../domain/value-objects/ConversationId');
+
+const prisma = getPrismaClient();
+
+class PostgresConversationRepository {
+  constructor(prismaClient = prisma) {
+    this.prisma = prismaClient;
+  }
+
+  async save(conversation) {
+    const created = await this.prisma.conversation.create({
+      data: {
+        id: conversation.id.value,
+        title: conversation.title,
+        createdAt: conversation.createdAt,
+      },
+    });
+
+    return new Conversation({
+      id: new ConversationId(created.id),
+      title: created.title,
+    });
+  }
+
+  async findById(conversationId) {
+    const found = await this.prisma.conversation.findUnique({
+      where: { id: conversationId.value },
+      include: { participants: true, messages: true },
+    });
+
+    if (!found) return null;
+
+    return new Conversation({
+      id: new ConversationId(found.id),
+      title: found.title,
+    });
+  }
+
+  async findAll() {
+    const conversations = await this.prisma.conversation.findMany();
+
+    return conversations.map(
+      (c) =>
+        new Conversation({
+          id: new ConversationId(c.id),
+          title: c.title,
+        })
+    );
+  }
+
+  async update(conversation) {
+    const updated = await this.prisma.conversation.update({
+      where: { id: conversation.id.value },
+      data: { title: conversation.title },
+    });
+
+    return new Conversation({
+      id: new ConversationId(updated.id),
+      title: updated.title,
+    });
+  }
+
+  async delete(conversationId) {
+    await this.prisma.conversation.delete({ where: { id: conversationId.value } });
+  }
+}
+
+module.exports = PostgresConversationRepository;
+===== src/infrastructure/_backup_repositories/PostgresMessageRepository.js =====
+
+// src/infrastructure/repositories/PostgresMessageRepository.js
+
+const Message = require('../../domain/entities/Message');
+const MessageId = require('../../domain/value-objects/MessageId');
+const ConversationId = require('../../domain/value-objects/ConversationId');
+const UserId = require('../../domain/value-objects/UserId');
+const Timestamp = require('../../domain/value-objects/Timestamp');
+
+class PostgresMessageRepository {
+  constructor(prisma) {
+    if (!prisma) {
+      throw new Error('Prisma client is required');
+    }
+    this.prisma = prisma;
+  }
+
+  async create(message) {
+    const created = await this.prisma.message.create({
+      data: {
+        id: message.id.value,
+        conversationId: message.conversationId.value,
+        senderId: message.senderId.value,
+        content: message.content,
+        sentAt: message.sentAt.value,
+      },
+    });
+
+    return new Message({
+      id: new MessageId(created.id),
+      conversationId: new ConversationId(created.conversationId),
+      senderId: new UserId(created.senderId),
+      content: created.content,
+      sentAt: new Timestamp(created.sentAt),
+    });
+  }
+
+  async findById(messageId) {
+    const found = await this.prisma.message.findUnique({
+      where: { id: messageId.value },
+    });
+
+    if (!found) return null;
+
+    return new Message({
+      id: new MessageId(found.id),
+      conversationId: new ConversationId(found.conversationId),
+      senderId: new UserId(found.senderId),
+      content: found.content,
+      sentAt: new Timestamp(found.sentAt),
+    });
+  }
+
+  async findByConversationId(conversationId) {
+    const messages = await this.prisma.message.findMany({
+      where: { conversationId: conversationId.value },
+      orderBy: { sentAt: 'asc' },
+    });
+
+    return messages.map(
+      (m) =>
+        new Message({
+          id: new MessageId(m.id),
+          conversationId: new ConversationId(m.conversationId),
+          senderId: new UserId(m.senderId),
+          content: m.content,
+          sentAt: new Timestamp(m.sentAt),
+        })
+    );
+  }
+
+  async delete(messageId) {
+    await this.prisma.message.delete({
+      where: { id: messageId.value },
+    });
+  }
+}
+
+module.exports = PostgresMessageRepository;
+===== src/infrastructure/_backup_repositories/PostgresUserRepository.js =====
+
+// src/infrastructure/repositories/PostgresUserRepository.js
+
+const User = require('../../domain/entities/User');
+const UserId = require('../../domain/value-objects/UserId');
+
+class PostgresUserRepository {
+  constructor(prisma) {
+    if (!prisma) {
+      throw new Error('Prisma client is required');
+    }
+    this.prisma = prisma;
+  }
+
+  async save(user) {
+    const created = await this.prisma.user.create({
+      data: {
+        id: user.id.value,
+        username: user.username,
+        email: user.email,
+        createdAt: user.createdAt || new Date(),
+      },
+    });
+
+    return new User({
+      id: new UserId(created.id),
+      username: created.username,
+      email: created.email,
+    });
+  }
+
+  async findById(userId) {
+    const found = await this.prisma.user.findUnique({
+      where: { id: userId.value },
+    });
+
+    if (!found) return null;
+
+    return new User({
+      id: new UserId(found.id),
+      username: found.username,
+      email: found.email,
+    });
+  }
+
+  async findAll() {
+    const users = await this.prisma.user.findMany();
+
+    return users.map(
+      (u) =>
+        new User({
+          id: new UserId(u.id),
+          username: u.username,
+          email: u.email,
+        })
+    );
+  }
+
+  async update(user) {
+    const updated = await this.prisma.user.update({
+      where: { id: user.id.value },
+      data: {
+        username: user.username,
+        email: user.email,
+      },
+    });
+
+    return new User({
+      id: new UserId(updated.id),
+      username: updated.username,
+      email: updated.email,
+    });
+  }
+
+  async delete(userId) {
+    await this.prisma.user.delete({
+      where: { id: userId.value },
+    });
+  }
+}
+
+module.exports = PostgresUserRepository;
+===== src/presentation/websocket/gateways/ChatGateway.js =====
+
+// src/presentation/websocket/gateways/ChatGateway.js
+===== src/presentation/websocket/handlers/message.handler.js =====
+
+// src/presentation/websocket/handlers/message.handler.js
+===== src/presentation/websocket/handlers/typing.handler.js =====
+
+// src/presentation/websocket/handlers/typing.handler.js
+===== src/presentation/websocket/connection/ConnectionManager.js =====
+
+// src/presentation/websocket/connection/ConnectionManager.js
+===== src/presentation/websocket/websocket.server.js =====
+
+// src/presentation/websocket/websocket.server.js
+===== src/presentation/websocket/connection.manager.js =====
+
+// src/presentation/websocket/connection.manager.js
+===== src/presentation/websocket/websocket.gateway.js =====
+
+// src/presentation/websocket/websocket.gateway.js
+
+const WebSocket = require('ws');
+require('dotenv').config();
+
+const WS_PORT = process.env.WS_PORT || 8080;
+
+const wss = new WebSocket.Server({ port: WS_PORT });
+
+wss.on('connection', (ws) => {
+  console.log('Nuova connessione');
+
+  ws.on('message', (msg) => {
+    console.log('Messaggio ricevuto:', msg.toString());
+    // Echo minimal per test
+    ws.send(JSON.stringify({ event: 'ECHO', data: msg.toString() }));
+  });
+
+  ws.on('close', () => console.log('Connessione chiusa'));
+});
+
+console.log(`WebSocket Gateway in ascolto sulla porta ${WS_PORT}`);
+===== src/presentation/http/controllers/ConversationController.js =====
+
+// src/presentation/http/controllers/ConversationController.js
+
+const CreateConversationUseCase =
+  require('../../../application/use-cases/conversation/CreateConversationUseCase');
+
+const GetConversationMessagesUseCase =
+  require('../../../application/use-cases/conversation/GetConversationMessagesUseCase');
+
+const serializeConversation =
+  require('../../serializers/conversation.serializer');
+
+const serializeMessage =
+  require('../../serializers/message.serializer');
+
+class ConversationController {
+
+  constructor(
+    conversationRepository,
+    messageRepository
+  ) {
+
+    this.createConversationUseCase =
+      new CreateConversationUseCase(
+        conversationRepository
+      );
+
+    this.getConversationMessagesUseCase =
+      new GetConversationMessagesUseCase(
+        messageRepository
+      );
+  }
+
+  async createConversation(req, res, next) {
+
+    try {
+
+      const conversation =
+        await this.createConversationUseCase.execute(
+          req.body
+        );
+
+      return res.status(201).json(
+        serializeConversation(conversation)
+      );
+
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getMessages(req, res, next) {
+
+    try {
+
+      const messages =
+        await this.getConversationMessagesUseCase.execute(
+          req.params.conversationId
+        );
+
+      return res.status(200).json(
+        messages.map(serializeMessage)
+      );
+
+    } catch (err) {
+      next(err);
+    }
+  }
+}
+
+module.exports = ConversationController;
+===== src/presentation/http/controllers/MessageController.js =====
+
+// src/presentation/http/controllers/MessageController.js
+
+const SendMessageUseCase =
+  require('../../../application/use-cases/message/SendMessageUseCase');
+
+const serializeMessage =
+  require('../../serializers/message.serializer');
+
+class MessageController {
+
+  constructor(
+    messageRepository,
+    conversationRepository,
+    eventBus
+  ) {
+
+    this.sendMessageUseCase =
+      new SendMessageUseCase(
+        messageRepository,
+        conversationRepository,
+        eventBus
+      );
+  }
+
+  async send(req, res, next) {
+
+    try {
+
+      const message =
+        await this.sendMessageUseCase.execute({
+          conversationId: req.body.conversationId,
+          senderId: req.body.senderId,
+          content: req.body.content
+        });
+
+      return res.status(201).json(
+        serializeMessage(message)
+      );
+
+    } catch (err) {
+      next(err);
+    }
+  }
+}
+
+module.exports = MessageController;
+===== src/presentation/http/controllers/UserController.js =====
+
+// src/presentation/http/controllers/UserController.js
+
+const CreateUserUseCase =
+  require('../../../application/use-cases/user/CreateUserUseCase');
+
+const serializeUser =
+  require('../../serializers/user.serializer');
+
+class UserController {
+
+  constructor(userRepository) {
+
+    this.createUserUseCase =
+      new CreateUserUseCase(userRepository);
+  }
+
+  async createUser(req, res, next) {
+
+    try {
+
+      const user =
+        await this.createUserUseCase.execute(req.body);
+
+      return res.status(201).json(
+        serializeUser(user)
+      );
+
+    } catch (err) {
+      next(err);
+    }
+  }
+}
+
+module.exports = UserController;
+===== src/presentation/http/routes/conversation.routes.js =====
+
+// src/presentation/http/routes/conversation.routes.js
+
+const express = require('express');
+
+const validation =
+  require('../middleware/validation');
+
+const validateCreateConversation =
+  require('../validators/conversation.validator');
+
+module.exports = (controller) => {
+
+  const router = express.Router();
+
+  router.post(
+    '/',
+    validation(validateCreateConversation),
+    (req, res, next) =>
+      controller.createConversation(req, res, next)
+  );
+
+  router.get(
+    '/:conversationId/messages',
+    (req, res, next) =>
+      controller.getMessages(req, res, next)
+  );
+
+  return router;
+};
+===== src/presentation/http/routes/message.routes.js =====
+
+// src/presentation/http/routes/message.routes.js
+
+const express = require('express');
+
+const validation =
+  require('../middleware/validation');
+
+const validateSendMessage =
+  require('../validators/message.validator');
+
+module.exports = (controller) => {
+
+  const router = express.Router();
+
+  router.post(
+    '/',
+    validation(validateSendMessage),
+    (req, res, next) =>
+      controller.sendMessage(req, res, next)
+  );
+
+  return router;
+};
+===== src/presentation/http/routes/user.routes.js =====
+
+// src/presentation/http/routes/user.routes.js
+
+const express = require('express');
+
+const validation =
+  require('../middleware/validation');
+
+const validateCreateUser =
+  require('../validators/user.validator');
+
+module.exports = (controller) => {
+
+  const router = express.Router();
+
+  router.post(
+    '/',
+    validation(validateCreateUser),
+    (req, res, next) =>
+      controller.createUser(req, res, next)
+  );
+
+  return router;
+};
+===== src/presentation/http/routes/index.js =====
+
+// src/presentation/http/routes/index.js
+
+const express = require('express');
+
+const { getPrismaClient } =
+  require('../../../infrastructure/database/prismaClient');
+
+const PostgresUserRepository =
+  require('../../../infrastructure/repositories/postgres/PostgresUserRepository');
+
+const PostgresConversationRepository =
+  require('../../../infrastructure/repositories/postgres/PostgresConversationRepository');
+
+const PostgresMessageRepository =
+  require('../../../infrastructure/repositories/postgres/PostgresMessageRepository');
+
+const UserController =
+  require('../controllers/UserController');
+
+const ConversationController =
+  require('../controllers/ConversationController');
+
+const MessageController =
+  require('../controllers/MessageController');
+
+const userRoutes =
+  require('./user.routes');
+
+const conversationRoutes =
+  require('./conversation.routes');
+
+const messageRoutes =
+  require('./message.routes');
+
+const prisma = getPrismaClient();
+
+const userRepository =
+  new PostgresUserRepository(prisma);
+
+const conversationRepository =
+  new PostgresConversationRepository(prisma);
+
+const messageRepository =
+  new PostgresMessageRepository(prisma);
+
+const fakeEventBus = {
+  publish: async () => {}
+};
+
+const userController =
+  new UserController(userRepository);
+
+const conversationController =
+  new ConversationController(
+    conversationRepository,
+    messageRepository
+  );
+
+const messageController =
+  new MessageController(
+    messageRepository,
+    conversationRepository,
+    fakeEventBus
+  );
+
+const router = express.Router();
+
+router.use(
+  '/users',
+  userRoutes(userController)
+);
+
+router.use(
+  '/conversations',
+  conversationRoutes(conversationController)
+);
+
+router.use(
+  '/messages',
+  messageRoutes(messageController)
+);
+
+module.exports = router;
+===== src/presentation/http/middleware/error-handler.js =====
+
+// src/presentation/http/middleware/error-handler.js
+
+const mapError =
+  require('../errors/http-error-mapper');
+
+function errorHandler(err, req, res, next) {
+
+  console.error(err);
+
+  const mapped = mapError(err);
+
+  return res
+    .status(mapped.status)
+    .json(mapped.body);
+}
+
+module.exports = errorHandler;
+===== src/presentation/http/middleware/validation.js =====
+
+// src/presentation/http/middleware/validation.js
+
+function validation(schema) {
+
+  return (req, res, next) => {
+
+    const { error } = schema(req.body);
+
+    if (error) {
+
+      return res.status(400).json({
+        error: error.message
+      });
+    }
+
+    next();
+  };
+}
+
+module.exports = validation;
+===== src/presentation/http/server.js =====
+
+// src/presentation/http/server.js
+
+require('dotenv').config();
+
+const express = require('express');
+
+const routes =
+  require('./routes');
+
+const errorHandler =
+  require('./middleware/error-handler');
+
+const app = express();
+
+app.use(express.json());
+
+app.use('/api', routes);
+
+app.use(errorHandler);
+
+const PORT =
+  process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+
+  console.log(
+    `HTTP Server running on port ${PORT}`
+  );
+});
+===== src/presentation/http/errors/http-error-mapper.js =====
+
+// src/presentation/http/errors/http-error-mapper.js
+
+const BusinessRuleError =
+  require('../../../domain/errors/BusinessRuleError');
+
+const ValidationError =
+  require('../../../domain/errors/ValidationError');
+
+function mapError(err) {
+
+  if (err instanceof ValidationError) {
+
+    return {
+      status: 400,
+      body: {
+        error: err.message
+      }
+    };
+  }
+
+  if (err instanceof BusinessRuleError) {
+
+    return {
+      status: 422,
+      body: {
+        error: err.message
+      }
+    };
+  }
+
+  return {
+    status: 500,
+    body: {
+      error: 'Internal Server Error'
+    }
+  };
+}
+
+module.exports = mapError;
+===== src/presentation/http/validators/message.validator.js =====
+
+// src/presentation/http/validators/message.validator.js
+
+function validateSendMessage(body) {
+
+  if (!body.conversationId) {
+
+    return {
+      error: new Error(
+        'conversationId is required'
+      )
+    };
+  }
+
+  if (!body.senderId) {
+
+    return {
+      error: new Error(
+        'senderId is required'
+      )
+    };
+  }
+
+  if (!body.content) {
+
+    return {
+      error: new Error(
+        'content is required'
+      )
+    };
+  }
+
+  return { error: null };
+}
+
+module.exports = validateSendMessage;
+===== src/presentation/http/validators/user.validator.js =====
+
+// src/presentation/http/validators/user.validator.js
+
+function validateCreateUser(body) {
+
+  if (!body.username) {
+    return {
+      error: new Error('username is required')
+    };
+  }
+
+  if (!body.email) {
+    return {
+      error: new Error('email is required')
+    };
+  }
+
+  return { error: null };
+}
+
+module.exports = validateCreateUser;
+===== src/presentation/http/validators/conversation.validator.js =====
+
+// src/presentation/http/validators/conversation.validator.js
+
+function validateCreateConversation(body) {
+
+  if (
+    !body.participants ||
+    !Array.isArray(body.participants)
+  ) {
+
+    return {
+      error: new Error(
+        'participants must be an array'
+      )
+    };
+  }
+
+  return { error: null };
+}
+
+module.exports = validateCreateConversation;
+===== src/presentation/serializers/conversation.serializer.js =====
+
+// src/presentation/serializers/conversation.serializer.js
+
+module.exports = function serializeConversation(
+  conversation
+) {
+
+  return {
+    id: conversation.id.toString(),
+    title: conversation.title,
+    participants:
+      conversation.participants.map(
+        p => p.userId.toString()
+      )
+  };
+};
+===== src/presentation/serializers/message.serializer.js =====
+
+// src/presentation/serializers/message.serializer.js
+
+
+module.exports = function serializeMessage(message) {
+
+  return {
+    id: message.id.toString(),
+    conversationId:
+      message.conversationId.toString(),
+
+    senderId:
+      message.senderId.toString(),
+
+    content: message.content,
+
+    type: message.type,
+
+    createdAt:
+      message.createdAt.value,
+
+    deliveredAt:
+      message.deliveredAt?.value ?? null,
+
+    readAt:
+      message.readAt?.value ?? null
+  };
+};
+===== src/presentation/serializers/user.serializer.js =====
+
+// src/presentation/serializers/user.serializer.js
+
+module.exports = function serializeUser(user) {
+
+  return {
+    id: user.id.toString(),
+    username: user.username,
+    email: user.email,
+    createdAt: user.createdAt
+  };
+};
+===== src/application/use-cases/user/CreateUserUseCase.js =====
+
+// src/application/use-cases/user/CreateUserUseCase.js
+
+const User = require('../../../domain/entities/User');
+const UserId = require('../../../domain/value-objects/UserId');
+const Timestamp = require('../../../domain/value-objects/Timestamp');
+
+class CreateUserUseCase {
+  constructor(userRepository) {
+    this.userRepository = userRepository;
+  }
+
+  async execute({ username, email }) {
+    const user = new User({
+      id: new UserId(),
+      username,
+      email,
+      createdAt: new Timestamp()
+    });
+
+    return await this.userRepository.save(user);
+  }
+}
+
+module.exports = CreateUserUseCase;
+===== src/application/use-cases/conversation/CreateConversationUseCase.js =====
+
+// src/application/use-cases/conversation/CreateConversationUseCase.js
+
+const Conversation = require('../../../domain/entities/Conversation');
+
+class CreateConversationUseCase {
+  constructor(conversationRepository, eventBus) {
+    this.conversationRepository = conversationRepository;
+    this.eventBus = eventBus;
+  }
+
+  async execute({ title, creatorUserId }) {
+
+    const conversation = Conversation.create({
+      title,
+      creatorUserId
+    });
+
+    await this.conversationRepository.save(conversation);
+
+    const events = conversation.pullEvents();
+
+    for (const event of events) {
+      await this.eventBus.publish(event);
+    }
+
+    return conversation;
+  }
+}
+
+module.exports = CreateConversationUseCase;
+===== src/application/use-cases/conversation/GetConversationMessagesUseCase.js =====
+
+// src/application/use-cases/conversation/GetConversationMessagesUseCase.js
+
+class GetConversationMessagesUseCase {
+  constructor(messageRepository) {
+    this.messageRepository = messageRepository;
+  }
+
+  async execute({ conversationId }) {
+    return await this.messageRepository.findByConversation(
+      conversationId
+    );
+  }
+}
+
+module.exports = GetConversationMessagesUseCase;
+===== src/application/use-cases/message/SendMessageUseCase.js =====
+
+// src/application/use-cases/message/SendMessageUseCase.js
+
+const Message = require('../../../domain/entities/Message');
+
+const MessageId = require('../../../domain/value-objects/MessageId');
+const Timestamp = require('../../../domain/value-objects/Timestamp');
+const ConversationId = require('../../../domain/value-objects/ConversationId');
+const UserId = require('../../../domain/value-objects/UserId');
+
+const BusinessRuleError =
+  require('../../../domain/errors/BusinessRuleError');
+
+class SendMessageUseCase {
+  constructor(
+    messageRepository,
+    conversationRepository,
+    eventBus
+  ) {
+    this.messageRepository = messageRepository;
+    this.conversationRepository = conversationRepository;
+    this.eventBus = eventBus;
+  }
+
+  async execute({
+    conversationId,
+    senderId,
+    content
+  }) {
+
+    const cid = new ConversationId(conversationId);
+    const uid = new UserId(senderId);
+
+    const conversation =
+      await this.conversationRepository.findById(cid);
+
+    if (!conversation) {
+      throw new BusinessRuleError(
+        'Conversation not found'
+      );
+    }
+
+    if (!conversation.hasParticipant(uid)) {
+      throw new BusinessRuleError(
+        'Sender is not part of conversation'
+      );
+    }
+
+    const message = new Message({
+      id: new MessageId(),
+      conversationId: cid,
+      senderId: uid,
+      content,
+      sentAt: new Timestamp()
+    });
+
+    await this.messageRepository.save(message);
+
+    const events = message.pullEvents();
+
+    for (const event of events) {
+      await this.eventBus.publish(event);
+    }
+
+    return message;
+  }
+}
+
+module.exports = SendMessageUseCase;
+===== src/application/ports/EventBus.js =====
+
+// src/application/ports/EventBus.js
+
+class EventBus {
+  async publish(event) {
+    throw new Error('EventBus.publish() not implemented');
+  }
+}
+
+module.exports = EventBus;
